@@ -1,6 +1,6 @@
 # data-inspector
 
-Generates insights for unstructured text data.
+Rust web service that generates insights for unstructured text data.
 
 # Dev
 ```sh
