@@ -11,7 +11,7 @@ struct ImportDataRequest {
 
 #[post("/import")]
 async fn import_data(import_data_req: web::Json<ImportDataRequest>) -> impl Responder {
-    importdataservice::import_data(&import_data_req.uri);
+    importdataservice::import_data(&import_data_req.uri).await;
     HttpResponse::Ok()
 }
 
