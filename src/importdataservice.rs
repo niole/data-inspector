@@ -1,7 +1,8 @@
 use std::{str, cmp};
+use std::error::Error;
+use actix_web::rt::task::spawn_blocking;
 use log::debug;
 use reqwest;
-use rust_bert::RustBertError;
 use rust_bert::pipelines::sentence_embeddings::{SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType};
 
 /// downloads data over http from the specified uri
@@ -21,14 +22,18 @@ async fn download_data(uri: &String) {
     let chunks = chunk_text(&body, 4000);
 
     // encode the text TODO make this work
-    let encoded_cs: Vec<Vec<f32>> = encode_chunks(chunks).unwrap();
-    print!("{:?}", encoded_cs.get(0).unwrap_or(&vec![]));
+    let _ = encode_chunks(chunks).await.and_then(|encoded_cs| {
+        debug!("{:?}", encoded_cs.get(0).unwrap_or(&vec![]));
+        return Ok(encoded_cs);
+    });
 }
 
-fn encode_chunks(chunks: Vec<&[u8]>) -> Result<Vec<Vec<f32>>, RustBertError> {
-    let model = SentenceEmbeddingsBuilder::remote(
+async fn encode_chunks(chunks: Vec<&[u8]>) -> Result<Vec<Vec<f32>>, Box<dyn Error>> {
+    // sentenceembeddingsbuilder::remote is blocking and we are in an async runtime
+    // so must explicitly spawn a thread for the blocking computation or panic
+    let model = spawn_blocking( move || { SentenceEmbeddingsBuilder::remote(
             SentenceEmbeddingsModelType::AllMiniLmL12V2
-        ).create_model()?;
+        ).create_model() }).await?;
 
     let sentences: Vec<&str> = chunks.iter().map(|c| {
         match str::from_utf8(c) {
@@ -39,8 +44,7 @@ fn encode_chunks(chunks: Vec<&[u8]>) -> Result<Vec<Vec<f32>>, RustBertError> {
             }
         }
     }).collect();
-
-    return model.encode(&sentences);
+    return Ok(model?.encode(&sentences)?);
 }
 
 fn chunk_text(text: &String, chunk_size: usize) -> Vec<&[u8]> {
