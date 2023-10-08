@@ -1,9 +1,12 @@
 use std::{str, cmp};
 use std::error::Error;
 use actix_web::rt::task::spawn_blocking;
-use log::debug;
+use log::{debug, error};
 use reqwest;
 use rust_bert::pipelines::sentence_embeddings::{SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType};
+
+use crate::kmeansservice;
+
 
 /// downloads data over http from the specified uri
 /// no auth
@@ -21,11 +24,16 @@ async fn download_data(uri: &String) {
     // chunk the text
     let chunks = chunk_text(&body, 4000);
 
-    // encode the text TODO make this work
-    let _ = encode_chunks(chunks).await.and_then(|encoded_cs| {
-        debug!("{:?}", encoded_cs.get(0).unwrap_or(&vec![]));
-        return Ok(encoded_cs);
-    });
+    // encode the text
+    let encoded_cs = encode_chunks(chunks).await;
+
+    match encoded_cs {
+        Ok(cs) => {
+            let service = kmeansservice::init(cs);
+            print!("{:?}", service.model.centroids());
+        }
+        Err(e) => error!("{}", e),
+    }
 }
 
 async fn encode_chunks(chunks: Vec<&[u8]>) -> Result<Vec<Vec<f32>>, Box<dyn Error>> {

@@ -1,9 +1,9 @@
 use actix_web::{post, web, App, HttpResponse, HttpServer, Responder};
-use log::debug;
 use serde::Deserialize;
 use env_logger;
 
 mod importdataservice;
+mod kmeansservice;
 
 #[derive(Deserialize)]
 struct ImportDataRequest {
@@ -12,7 +12,6 @@ struct ImportDataRequest {
 
 #[post("/import")]
 async fn import_data(import_data_req: web::Json<ImportDataRequest>) -> impl Responder {
-    debug!("START");
     importdataservice::import_data(&import_data_req.uri).await;
     HttpResponse::Ok()
 }
