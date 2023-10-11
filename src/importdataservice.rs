@@ -4,20 +4,22 @@ use actix_web::rt::task::spawn_blocking;
 use log::debug;
 use reqwest;
 use rust_bert::pipelines::sentence_embeddings::{SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType};
-use ndarray::ArrayBase;
 use smartcore::decomposition::svd::SVD;
 use smartcore::linalg::basic::matrix::DenseMatrix;
-use smartcore::decomposition::svd::SVDParameters;
 use smartcore::linalg::basic::arrays::Array2;
+use smartcore::decomposition::svd::SVDParameters;
+use serde::Serialize;
 
 use crate::kmeansservice;
 
-struct VisData {
+#[derive(Serialize)]
+pub struct VisData {
     centroids: Vec<(f32, f32)>,
     data: Vec<DataPoint>
 }
 
-struct DataPoint {
+#[derive(Serialize)]
+pub struct DataPoint {
     centroid_index: usize,
     x: f32,
     y: f32,
@@ -31,8 +33,8 @@ struct DataPoint {
 ///
 /// # Arguments
 /// * `uri` - the location of the data
-pub async fn  import_data(uri: &String) {
-    download_data(uri).await; // TODO poll?
+pub async fn  import_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
+    return download_data(uri).await; // TODO poll?
 }
 
 async fn download_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
@@ -45,7 +47,6 @@ async fn download_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
     let encoded_cs = encode_chunks(&chunks).await?;
 
     let service = kmeansservice::init(&encoded_cs);
-    print!("{:?}", service.model.centroids());
 
     let memberships = service.memberships;
 

@@ -634,6 +634,7 @@ dependencies = [
  "reqwest",
  "rust-bert",
  "serde",
+ "serde_json",
  "smartcore",
 ]
 

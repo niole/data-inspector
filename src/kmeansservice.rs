@@ -3,9 +3,7 @@ use linfa::traits::Fit;
 use linfa_nn::distance::L2Dist;
 use linfa_clustering::KMeans;
 use linfa::prelude::PredictInplace;
-use ndarray::Array;
-use ndarray::Array1;
-use ndarray::Axis;
+use ndarray::{Array, Array1, Axis};
 use rand_xoshiro::Xoshiro256Plus;
 use rand_xoshiro::rand_core::SeedableRng;
 
