@@ -21,8 +21,7 @@ pub struct VisData {
 #[derive(Serialize)]
 pub struct DataPoint {
     centroid_index: usize,
-    x: f32,
-    y: f32,
+    point: (f32, f32),
     content: String
 }
 
@@ -66,8 +65,7 @@ async fn download_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
     let data = reduced_encodings.row_iter().enumerate().map(|(index, point)| {
         DataPoint {
             centroid_index: memberships[index],
-            x: *point.get(0),
-            y: *point.get(1),
+            point: (*point.get(0), *point.get(1)),
             content: str::from_utf8(chunks[index]).unwrap().to_string()
         }
     }).collect();

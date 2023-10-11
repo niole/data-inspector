@@ -34,6 +34,8 @@ pub fn init(encoded_cs: &Vec<Vec<f32>>) -> KMeansService {
     let targets = Array::from_iter(0..records.len_of(Axis(0)));
     let observations = DatasetBase::new(records.clone(), targets);
 
+    // TODO can we do a dynamic number of centroids? Right now it's always 10,
+    // when maybe we would want more or less groups?
     let model = KMeans::params_with_rng(10, rng.clone())
         .tolerance(1e-2)
         .fit(&observations)
