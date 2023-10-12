@@ -1,4 +1,6 @@
 use std::{str, cmp};
+use plotly::color::NamedColor;
+use plotly::common::Marker;
 use std::error::Error;
 use actix_web::rt::task::spawn_blocking;
 use log::debug;
@@ -38,12 +40,19 @@ pub async fn import_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
 }
 
 pub async fn render_data(uri: &String) -> Result<String, Box<dyn Error>>{
+    let colors = vec![NamedColor::Azure, NamedColor::Black, NamedColor::Crimson, NamedColor:: Brown, NamedColor::Goldenrod, NamedColor::HotPink, NamedColor::Lavender, NamedColor::Grey, NamedColor::Orange, NamedColor::Plum, NamedColor::Tomato];
     let data = download_data(uri).await.expect("asdf");
 
     let trace = Scatter::new(
         data.data.iter().map(|d| d.point.0).collect(),
         data.data.iter().map(|d| d.point.1).collect(),
-    ).mode(Mode::Markers);
+    )
+    .mode(Mode::Markers)
+    .marker(
+        Marker::new()
+        .color_array(data.data.iter().map(|d| colors[d.centroid_index] ).collect()),
+    );
+
     let mut plot = Plot::new();
     plot.add_trace(trace);
     return Ok(plot.to_html());
