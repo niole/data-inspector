@@ -9,6 +9,7 @@ use smartcore::linalg::basic::matrix::DenseMatrix;
 use smartcore::linalg::basic::arrays::Array2;
 use smartcore::decomposition::svd::SVDParameters;
 use serde::Serialize;
+use plotly::{ common::Mode, Scatter, Plot};
 
 use crate::kmeansservice;
 
@@ -32,8 +33,20 @@ pub struct DataPoint {
 ///
 /// # Arguments
 /// * `uri` - the location of the data
-pub async fn  import_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
+pub async fn import_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
     return download_data(uri).await; // TODO poll?
+}
+
+pub async fn render_data(uri: &String) -> Result<String, Box<dyn Error>>{
+    let data = download_data(uri).await.expect("asdf");
+
+    let trace = Scatter::new(
+        data.data.iter().map(|d| d.point.0).collect(),
+        data.data.iter().map(|d| d.point.1).collect(),
+    ).mode(Mode::Markers);
+    let mut plot = Plot::new();
+    plot.add_trace(trace);
+    return Ok(plot.to_html());
 }
 
 async fn download_data(uri: &String) -> Result<VisData, Box<dyn Error>> {

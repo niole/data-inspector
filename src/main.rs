@@ -1,5 +1,5 @@
 use actix_web::{
-    body::BoxBody, post, web, App, HttpResponse, HttpServer, Responder
+    get, body::BoxBody, post, web, App, HttpResponse, HttpServer, Responder
 };
 use serde_json;
 use actix_web::HttpRequest;
@@ -33,12 +33,21 @@ async fn import_data(import_data_req: web::Json<ImportDataRequest>) -> impl Resp
     data
 }
 
+#[get("/render")]
+async fn render_data(import_data_req: web::Query<ImportDataRequest>) -> impl Responder {
+    let html = importdataservice::render_data(&import_data_req.uri).await.expect("Should be html");
+    HttpResponse::Ok()
+        .content_type(ContentType::html())
+        .body(html)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     env_logger::init();
     HttpServer::new(|| {
       App::new()
         .service(import_data)
+        .service(render_data)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
