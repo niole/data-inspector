@@ -50,7 +50,8 @@ pub fn init(encoded_cs: &Vec<Vec<f32>>, k: usize) -> Result<KMeansService, Box<d
 
     model.predict_inplace(&records, &mut memberships);
 
-    let perplexity = 1.0;
+    // TODO what is perplecity?
+    let perplexity = 0.5;
 
     let points = TSneParams::embedding_size(2)
         .perplexity(perplexity)
