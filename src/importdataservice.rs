@@ -6,10 +6,6 @@ use actix_web::rt::task::spawn_blocking;
 use log::debug;
 use reqwest;
 use rust_bert::pipelines::sentence_embeddings::{SentenceEmbeddingsBuilder, SentenceEmbeddingsModelType};
-use smartcore::decomposition::svd::SVD;
-use smartcore::linalg::basic::matrix::DenseMatrix;
-use smartcore::linalg::basic::arrays::Array2;
-use smartcore::decomposition::svd::SVDParameters;
 use serde::Serialize;
 use plotly::{ common::Mode, Scatter, Plot};
 
@@ -35,13 +31,13 @@ pub struct DataPoint {
 ///
 /// # Arguments
 /// * `uri` - the location of the data
-pub async fn import_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
-    return download_data(uri).await; // TODO poll?
+pub async fn import_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Error>> {
+    return download_data(uri, k).await; // TODO poll?
 }
 
-pub async fn render_data(uri: &String) -> Result<String, Box<dyn Error>>{
+pub async fn render_data(uri: &String, k: usize) -> Result<String, Box<dyn Error>>{
     let colors = vec![NamedColor::Azure, NamedColor::Black, NamedColor::Crimson, NamedColor:: Brown, NamedColor::Goldenrod, NamedColor::HotPink, NamedColor::Lavender, NamedColor::Grey, NamedColor::Orange, NamedColor::Plum, NamedColor::Tomato];
-    let data = download_data(uri).await.expect("asdf");
+    let data = download_data(uri, k).await.expect("asdf");
 
     let trace = Scatter::new(
         data.data.iter().map(|d| d.point.0).collect(),
@@ -58,7 +54,7 @@ pub async fn render_data(uri: &String) -> Result<String, Box<dyn Error>>{
     return Ok(plot.to_html());
 }
 
-async fn download_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
+async fn download_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Error>> {
     let body = reqwest::get(uri).await.expect("body").text().await.unwrap();
 
     // chunk the text
@@ -67,33 +63,20 @@ async fn download_data(uri: &String) -> Result<VisData, Box<dyn Error>> {
     // encode the text
     let encoded_cs = encode_chunks(&chunks).await?;
 
-    let service = kmeansservice::init(&encoded_cs);
+    let service = kmeansservice::init(&encoded_cs, k)?;
 
     let memberships = service.memberships;
 
-    let encoded_cs_matrix = DenseMatrix::from_2d_vec(&encoded_cs);
-    let svd = SVD::fit(&encoded_cs_matrix, SVDParameters::default().with_n_components(2)).unwrap();
-
-    let reduced_encodings = svd.transform(&encoded_cs_matrix).unwrap();
-
-    let mut centroids_vec = vec!(); // TODO sad
-    for row in service.model.centroids().rows() {
-        centroids_vec.push(row.to_vec());
-    }
-
-    let centroids_matrix = DenseMatrix::from_2d_vec(&centroids_vec);
-    let reduced_centroids = svd.transform(&centroids_matrix).unwrap();
-
-    let data = reduced_encodings.row_iter().enumerate().map(|(index, point)| {
+    let data = service.points.rows().into_iter().enumerate().map(|(index, point)| {
         DataPoint {
             centroid_index: memberships[index],
-            point: (*point.get(0), *point.get(1)),
+            point: (*point.get(0).expect("Should have 0 index"), *point.get(1).expect("Should have 1 index")),
             content: str::from_utf8(chunks[index]).unwrap().to_string()
         }
     }).collect();
 
     return Ok(VisData {
-        centroids: reduced_centroids.row_iter().map(|r| { (*r.get(0), *r.get(1)) }).collect(),
+        centroids: service.centroid_points.rows().into_iter().map(|r| { (*r.get(0).expect("Should have 0 index"), *r.get(1).expect("Should have 1 index")) }).collect(),
         data: data
     });
 }

@@ -1,9 +1,12 @@
+use std::error::Error;
 use linfa::DatasetBase;
 use linfa::traits::Fit;
 use linfa_nn::distance::L2Dist;
+use linfa_tsne::TSneParams;
+use linfa::prelude::Transformer;
 use linfa_clustering::KMeans;
 use linfa::prelude::PredictInplace;
-use ndarray::{Array, Array1, Axis};
+use ndarray::{Array, Array2, Array1, Axis};
 use rand_xoshiro::Xoshiro256Plus;
 use rand_xoshiro::rand_core::SeedableRng;
 
@@ -19,10 +22,12 @@ use rand_xoshiro::rand_core::SeedableRng;
 
 pub struct KMeansService {
     pub model: KMeans<f32, L2Dist>,
-    pub memberships: Array1<usize>
+    pub memberships: Array1<usize>,
+    pub points: Array2<f32>,
+    pub centroid_points: Array2<f32>,
 }
 
-pub fn init(encoded_cs: &Vec<Vec<f32>>) -> KMeansService {
+pub fn init(encoded_cs: &Vec<Vec<f32>>, k: usize) -> Result<KMeansService, Box<dyn Error>> {
     // Our random number generator, seeded for reproducibility
     let rng = Xoshiro256Plus::seed_from_u64(42);
 
@@ -36,7 +41,7 @@ pub fn init(encoded_cs: &Vec<Vec<f32>>) -> KMeansService {
 
     // TODO can we do a dynamic number of centroids? Right now it's always 10,
     // when maybe we would want more or less groups?
-    let model = KMeans::params_with_rng(10, rng.clone())
+    let model = KMeans::params_with_rng(k, rng.clone())
         .tolerance(1e-2)
         .fit(&observations)
         .expect("KMeans fitted");
@@ -45,8 +50,22 @@ pub fn init(encoded_cs: &Vec<Vec<f32>>) -> KMeansService {
 
     model.predict_inplace(&records, &mut memberships);
 
-    return KMeansService {
+    let perplexity = 1.0;
+
+    let points = TSneParams::embedding_size(2)
+        .perplexity(perplexity)
+        .approx_threshold(0.1)
+        .transform(records)?;
+
+    let centroid_points = TSneParams::embedding_size(2)
+        .perplexity(perplexity)
+        .approx_threshold(0.1)
+        .transform(model.centroids().clone())?;
+
+    return Ok(KMeansService {
         model: model,
-        memberships: memberships
-    };
+        memberships: memberships,
+        points: points,
+        centroid_points: centroid_points,
+    });
 }

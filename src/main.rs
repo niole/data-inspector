@@ -1,5 +1,5 @@
 use actix_web::{
-    get, body::BoxBody, post, web, App, HttpResponse, HttpServer, Responder
+    get, body::BoxBody, web, App, HttpResponse, HttpServer, Responder
 };
 use serde_json;
 use actix_web::HttpRequest;
@@ -13,6 +13,7 @@ mod kmeansservice;
 #[derive(Deserialize)]
 struct ImportDataRequest {
     uri: String,
+    k: usize,
 }
 
 impl Responder for importdataservice::VisData {
@@ -27,15 +28,15 @@ impl Responder for importdataservice::VisData {
     }
 }
 
-#[post("/import")]
-async fn import_data(import_data_req: web::Json<ImportDataRequest>) -> impl Responder {
-    let data = importdataservice::import_data(&import_data_req.uri).await;
+#[get("/import")]
+async fn import_data(import_data_req: web::Query<ImportDataRequest>) -> impl Responder {
+    let data = importdataservice::import_data(&import_data_req.uri, import_data_req.k).await;
     data
 }
 
 #[get("/render")]
 async fn render_data(import_data_req: web::Query<ImportDataRequest>) -> impl Responder {
-    let html = importdataservice::render_data(&import_data_req.uri).await.expect("Should be html");
+    let html = importdataservice::render_data(&import_data_req.uri, import_data_req.k).await.expect("Should be html");
     HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(html)
