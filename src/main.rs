@@ -1,5 +1,5 @@
 use actix_web::{
-    get, body::BoxBody, web, App, HttpResponse, HttpServer, Responder
+    post, get, body::BoxBody, web, App, HttpResponse, HttpServer, Responder
 };
 use serde_json;
 use actix_web::HttpRequest;
@@ -11,8 +11,14 @@ mod importdataservice;
 mod kmeansservice;
 
 #[derive(Deserialize)]
-struct ImportDataRequest {
+struct ImportUriRequest {
     uri: String,
+    k: usize,
+}
+
+#[derive(Deserialize)]
+struct ImportDataRequest {
+    data: Vec<String>,
     k: usize,
 }
 
@@ -29,14 +35,22 @@ impl Responder for importdataservice::VisData {
 }
 
 #[get("/import")]
-async fn import_data(import_data_req: web::Query<ImportDataRequest>) -> impl Responder {
+async fn import_data(import_data_req: web::Query<ImportUriRequest>) -> impl Responder {
     let data = importdataservice::import_data(&import_data_req.uri, import_data_req.k).await;
     data
 }
 
-#[get("/render")]
-async fn render_data(import_data_req: web::Query<ImportDataRequest>) -> impl Responder {
-    let html = importdataservice::render_data(&import_data_req.uri, import_data_req.k).await.expect("Should be html");
+#[get("/render/uri")]
+async fn render_uri(import_data_req: web::Query<ImportUriRequest>) -> impl Responder {
+    let html = importdataservice::render_uri(&import_data_req.uri, import_data_req.k).await.expect("Should be html");
+    HttpResponse::Ok()
+        .content_type(ContentType::html())
+        .body(html)
+}
+
+#[post("/render/data")]
+async fn render_data(import_data_req: web::Json<ImportDataRequest>) -> impl Responder {
+    let html = importdataservice::render_data(&import_data_req.data, import_data_req.k).await.expect("Should be html");
     HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(html)
@@ -49,6 +63,7 @@ async fn main() -> std::io::Result<()> {
       App::new()
         .service(import_data)
         .service(render_data)
+        .service(render_uri)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

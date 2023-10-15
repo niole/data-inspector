@@ -1,3 +1,6 @@
 /target
 /libtorch
 *test.json
+venv/**/*
+requirements.txt
+*.py

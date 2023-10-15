@@ -11,6 +11,8 @@ use plotly::{ common::Mode, Scatter, Plot};
 
 use crate::kmeansservice;
 
+const COLORS: &[NamedColor] = &[NamedColor::Azure, NamedColor::Black, NamedColor::Crimson, NamedColor:: Brown, NamedColor::Goldenrod, NamedColor::HotPink, NamedColor::Lavender, NamedColor::Grey, NamedColor::Orange, NamedColor::Plum, NamedColor::Tomato];
+
 #[derive(Serialize)]
 pub struct VisData {
     centroids: Vec<(f32, f32)>,
@@ -35,10 +37,18 @@ pub async fn import_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Erro
     return download_data(uri, k).await; // TODO poll?
 }
 
-pub async fn render_data(uri: &String, k: usize) -> Result<String, Box<dyn Error>>{
-    let colors = vec![NamedColor::Azure, NamedColor::Black, NamedColor::Crimson, NamedColor:: Brown, NamedColor::Goldenrod, NamedColor::HotPink, NamedColor::Lavender, NamedColor::Grey, NamedColor::Orange, NamedColor::Plum, NamedColor::Tomato];
+pub async fn render_uri(uri: &String, k: usize) -> Result<String, Box<dyn Error>>{
     let data = download_data(uri, k).await.expect("asdf");
 
+    return build_plot(data);
+}
+
+pub async fn render_data(data: &Vec<String>, k: usize) -> Result<String, Box<dyn Error>>{
+    let vis_data = create_vis_data(&data.iter().map(|d| d.as_bytes()).collect(), k).await?;
+    return build_plot(vis_data);
+}
+
+fn build_plot(data: VisData) -> Result<String, Box<dyn Error>> {
     let trace = Scatter::new(
         data.data.iter().map(|d| d.point.0).collect(),
         data.data.iter().map(|d| d.point.1).collect(),
@@ -47,7 +57,7 @@ pub async fn render_data(uri: &String, k: usize) -> Result<String, Box<dyn Error
     .mode(Mode::Markers)
     .marker(
         Marker::new()
-        .color_array(data.data.iter().map(|d| colors[d.centroid_index] ).collect()),
+        .color_array(data.data.iter().map(|d| COLORS[d.centroid_index] ).collect()),
     );
     let mut plot = Plot::new();
     plot.add_trace(trace);
@@ -60,8 +70,12 @@ async fn download_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Error>
     // chunk the text
     let chunks = chunk_text(&body, 4000);
 
+    return create_vis_data(&chunks, k).await;
+}
+
+async fn create_vis_data(data: &Vec<&[u8]>, k: usize) -> Result<VisData, Box<dyn Error>> {
     // encode the text
-    let encoded_cs = encode_chunks(&chunks).await?;
+    let encoded_cs = encode_chunks(data).await?;
 
     let service = kmeansservice::init(&encoded_cs, k)?;
 
@@ -71,7 +85,7 @@ async fn download_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Error>
         DataPoint {
             centroid_index: memberships[index],
             point: (*point.get(0).expect("Should have 0 index"), *point.get(1).expect("Should have 1 index")),
-            content: str::from_utf8(chunks[index]).unwrap().to_string()
+            content: str::from_utf8(data[index]).unwrap().to_string()
         }
     }).collect();
 
@@ -79,6 +93,7 @@ async fn download_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Error>
         centroids: service.centroid_points.rows().into_iter().map(|r| { (*r.get(0).expect("Should have 0 index"), *r.get(1).expect("Should have 1 index")) }).collect(),
         data: data
     });
+
 }
 
 async fn encode_chunks(chunks: &Vec<&[u8]>) -> Result<Vec<Vec<f32>>, Box<dyn Error>> {
