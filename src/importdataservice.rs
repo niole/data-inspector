@@ -43,12 +43,12 @@ pub async fn render_data(uri: &String, k: usize) -> Result<String, Box<dyn Error
         data.data.iter().map(|d| d.point.0).collect(),
         data.data.iter().map(|d| d.point.1).collect(),
     )
+    .hover_text_array(data.data.iter().map(|d| format!("{}", d.content)).collect())
     .mode(Mode::Markers)
     .marker(
         Marker::new()
         .color_array(data.data.iter().map(|d| colors[d.centroid_index] ).collect()),
     );
-
     let mut plot = Plot::new();
     plot.add_trace(trace);
     return Ok(plot.to_html());
