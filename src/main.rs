@@ -30,13 +30,14 @@ impl Responder for importdataservice::VisData {
 
         HttpResponse::Ok()
             .content_type(ContentType::json())
+            .insert_header(("Access-Control-Allow-Origin", "http://localhost:5173"))
             .body(body)
     }
 }
 
 #[get("/import")]
 async fn import_data(import_data_req: web::Query<ImportUriRequest>) -> impl Responder {
-    let data = importdataservice::import_data(&import_data_req.uri, import_data_req.k).await;
+    let data = importdataservice::import_data(&import_data_req.uri, import_data_req.k).await.expect("Should be json");
     data
 }
 
