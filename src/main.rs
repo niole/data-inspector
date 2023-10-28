@@ -4,6 +4,8 @@ use actix_web::{
 use serde_json;
 use actix_web::HttpRequest;
 use actix_web::http::header::ContentType;
+use actix_cors::Cors;
+use actix_web::http::header;
 use serde::Deserialize;
 use env_logger;
 
@@ -30,7 +32,6 @@ impl Responder for importdataservice::VisData {
 
         HttpResponse::Ok()
             .content_type(ContentType::json())
-            .insert_header(("Access-Control-Allow-Origin", "http://localhost:5173"))
             .body(body)
     }
 }
@@ -38,6 +39,12 @@ impl Responder for importdataservice::VisData {
 #[get("/import")]
 async fn import_data(import_data_req: web::Query<ImportUriRequest>) -> impl Responder {
     let data = importdataservice::import_data(&import_data_req.uri, import_data_req.k).await.expect("Should be json");
+    data
+}
+
+#[post("/import")]
+async fn import_data_post(import_data_req: web::Json<ImportDataRequest>) -> impl Responder {
+    let data = importdataservice::import_data_snippets(&import_data_req.data, import_data_req.k).await.expect("Should be json");
     data
 }
 
@@ -57,12 +64,23 @@ async fn render_data(import_data_req: web::Json<ImportDataRequest>) -> impl Resp
         .body(html)
 }
 
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+
     env_logger::init();
+
     HttpServer::new(|| {
+        let cors = Cors::default()
+            .allowed_origin("http://localhost:5173")
+            .allowed_methods(vec!["GET", "POST"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+            .allowed_header(header::CONTENT_TYPE)
+            .max_age(3600);
       App::new()
+        .wrap(cors)
         .service(import_data)
+        .service(import_data_post)
         .service(render_data)
         .service(render_uri)
     })

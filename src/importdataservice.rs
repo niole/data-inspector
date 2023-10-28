@@ -37,6 +37,10 @@ pub async fn import_data(uri: &String, k: usize) -> Result<VisData, Box<dyn Erro
     return download_data(uri, k).await; // TODO poll?
 }
 
+pub async fn import_data_snippets(data: &Vec<String>, k: usize) -> Result<VisData, Box<dyn Error>> {
+    Ok(create_vis_data(&data.iter().map(|d| d.as_bytes()).collect(), k).await?)
+}
+
 pub async fn render_uri(uri: &String, k: usize) -> Result<String, Box<dyn Error>>{
     let data = download_data(uri, k).await.expect("asdf");
 
